@@ -1,9 +1,9 @@
 use clap::{Arg, Command};
 use regex::Regex;
+use std::io::prelude::*;
+use std::{fs::File, io::BufReader};
 
 fn main() {
-    let quote = "Every face, picture";
-
     let cli = Command::new("grep-lite")
         .author("Vinicios Wentz")
         .about("searches for patterns")
@@ -19,7 +19,15 @@ fn main() {
                     Arg::new("query")
                         .short('q')
                         .long("query")
-                        .help("string to search"),
+                        .required(true)
+                        .help("The Pattern to search for"),
+                )
+                .arg(
+                    Arg::new("input")
+                        .short('i')
+                        .long("input")
+                        .required(true)
+                        .help("File  to search"),
                 ),
         );
 
@@ -31,21 +39,28 @@ fn main() {
             if pattern_matches.contains_id("query") {
                 let query = pattern_matches
                     .get_one::<String>("query")
-                    .expect("contains_query");
-                find_matches(query, quote);
+                    .expect("Query should be provided");
+                let input = pattern_matches
+                    .get_one::<String>("input")
+                    .expect("Input should be provided");
+
+                let file = File::open(input).expect("File does not exist");
+
+                find_matches(query, file);
             }
         }
         _ => unreachable!(),
     }
 }
 
-fn find_matches(query: &String, quote: &str) {
+fn find_matches(query: &str, file: File) {
     let re = Regex::new(query).unwrap();
-    for line in quote.lines() {
-        let substr = re.find(line);
-        match substr {
-            Some(_) => println!("{}", line),
-            None => (),
-        };
+    let reader = BufReader::new(file);
+    for maybe_line in reader.lines() {
+        let line = maybe_line.unwrap();
+        let substr = re.find(&line);
+        if substr.is_some() {
+            println!("{}", line)
+        }
     }
 }
